@@ -1,31 +1,29 @@
 import IORedis, { Redis } from "ioredis";
 
-function fixUrl(url: string) {
-  if (!url) {
-    return "";
-  }
-  if (url.startsWith("redis://") && !url.startsWith("redis://:")) {
-    return url.replace("redis://", "redis://:");
-  }
-  if (url.startsWith("rediss://") && !url.startsWith("rediss://:")) {
-    return url.replace("rediss://", "rediss://:");
-  }
-  return url;
-}
-
 class ClientRedis {
   static instance: Redis;
 
-  constructor() {
-    throw new Error("Use Singleton.getInstance()");
-  }
+  private constructor() {} // Private constructor untuk Singleton
 
-  static getInstance(): Redis | null {
+  static getInstance(): Redis {
     if (!ClientRedis.instance) {
-      ClientRedis.instance = new IORedis(fixUrl(process.env.REDIS_URL!));
+      const redisUrl = process.env.REDIS_URL;
+      
+      // Jika variabel lingkungan tidak terbaca, kita kasih peringatan keras
+      if (!redisUrl) {
+        console.error("❌ ERROR: REDIS_URL tidak ditemukan di .env.local");
+        throw new Error("REDIS_URL is missing");
+      }
+
+      ClientRedis.instance = new IORedis(redisUrl);
+      
+      ClientRedis.instance.on("error", (err) => {
+        console.error("❌ IORedis Error:", err.message);
+      });
     }
     return ClientRedis.instance;
   }
 }
 
-export default ClientRedis.getInstance();
+const redisInstance = ClientRedis.getInstance();
+export default redisInstance;

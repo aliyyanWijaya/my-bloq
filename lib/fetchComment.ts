@@ -7,7 +7,12 @@ export default async function fetchComment(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const url = clearUrl(req.headers.referer);
+  const referer = req.headers.referer || "";
+  const url = clearUrl(referer);
+
+  if (!url) {
+    return res.status(200).json([]);
+  }
 
   if (!redis) {
     return res.status(500).json({ message: "Failed to connect to redis." });
@@ -20,12 +25,19 @@ export default async function fetchComment(
     // string data to object
     const comments = rawComments.map((c) => {
       const comment: Comment = JSON.parse(c);
-      delete comment.user.email;
+      if (comment.user) delete comment.user.email;
       return comment;
     });
 
     return res.status(200).json(comments);
-  } catch (_) {
-    return res.status(400).json({ message: "Unexpected error occurred." });
-  }
+  } catch (error: any) {
+  console.error("🔥 ERROR DI SERVER:");
+  console.error("Pesan:", error.message);
+  console.error("Stack:", error.stack);
+  
+  return res.status(500).json({ 
+    message: "Internal Server Error",
+    detail: error.message // Ini akan muncul di tab Response browser kamu
+  });
+}
 }
